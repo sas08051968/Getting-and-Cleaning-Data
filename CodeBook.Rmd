@@ -1,0 +1,132 @@
+---
+output: html_document
+---
+# CodeBook
+
+### Author: Salvatore Lenza 
+##### (https://github.com/sas08051968/Getting-and-Cleaning-Data)
+##### Saturday, July 25, 2015
+
+
+
+
+## Data Set Information:
+
+The experiments have been carried out with a group of 30 volunteers within an age bracket of 19-48 years. Each person performed six activities (WALKING, WALKING_UPSTAIRS, WALKING_DOWNSTAIRS, SITTING, STANDING, LAYING) wearing a smartphone (Samsung Galaxy S II) on the waist. Using its embedded accelerometer and gyroscope, we captured 3-axial linear acceleration and 3-axial angular velocity at a constant rate of 50Hz. The experiments have been video-recorded to label the data manually. The obtained dataset has been randomly partitioned into two sets, where 70% of the volunteers was selected for generating the training data and 30% the test data. 
+
+The sensor signals (accelerometer and gyroscope) were pre-processed by applying noise filters and then sampled in fixed-width sliding windows of 2.56 sec and 50% overlap (128 readings/window). The sensor acceleration signal, which has gravitational and body motion components, was separated using a Butterworth low-pass filter into body acceleration and gravity. The gravitational force is assumed to have only low frequency components, therefore a filter with 0.3 Hz cutoff frequency was used. From each window, a vector of features was obtained by calculating variables from the time and frequency domain.
+
+## Dataset structure
+
+```{r, echo=FALSE}
+setwd("~/coursera/g_c_data_project")
+
+if (!require("data.table")) {
+  install.packages("data.table")
+}
+if (!require("knitr")) {
+  install.packages("knitr")
+}
+if (!require("reshape2")) {
+  install.packages("reshape2")
+}
+
+require("data.table")
+require("knitr")
+require("reshape2")
+
+zip_File <- "getdata-projectfiles-UCI HAR Dataset.zip"
+
+if(!file.exists(zip_File)) {
+  zip_url <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+  download.file(url=zip_url,destfile=zip_File)
+}
+
+if(!(file.exists("./UCI HAR Dataset/activity_labels.txt") && file.exists("./UCI HAR Dataset/features.txt"))) { 
+  unzip(zip_File) 
+}
+
+# Load activity labels
+activity_labels <- read.table("./UCI HAR Dataset/activity_labels.txt")[,2]
+
+# Load data column names
+features <- read.table("./UCI HAR Dataset/features.txt")[,2]
+
+# Extract only the measurements on the mean and standard deviation for each measurement.
+extract_features <- grepl("mean|std", features)
+
+# Load and process X_test & y_test data.
+X_test <- read.table("./UCI HAR Dataset/test/X_test.txt")
+y_test <- read.table("./UCI HAR Dataset/test/y_test.txt")
+subject_test <- read.table("./UCI HAR Dataset/test/subject_test.txt")
+
+names(X_test) = features
+
+# Extract only the measurements on the mean and standard deviation for each measurement.
+X_test = X_test[,extract_features]
+
+# Load activity labels
+y_test[,2] = activity_labels[y_test[,1]]
+names(y_test) = c("Activity_ID", "Activity_Label")
+names(subject_test) = "subject"
+
+# Bind data
+test_data <- cbind(as.data.table(subject_test), y_test, X_test)
+
+# Load and process X_train & y_train data.
+X_train <- read.table("./UCI HAR Dataset/train/X_train.txt")
+y_train <- read.table("./UCI HAR Dataset/train/y_train.txt")
+
+subject_train <- read.table("./UCI HAR Dataset/train/subject_train.txt")
+
+names(X_train) = features
+
+# Extract only the measurements on the mean and standard deviation for each measurement.
+X_train = X_train[,extract_features]
+
+# Load activity data
+y_train[,2] = activity_labels[y_train[,1]]
+names(y_train) = c("Activity_ID", "Activity_Label")
+names(subject_train) = "subject"
+
+# Bind data
+train_data <- cbind(as.data.table(subject_train), y_train, X_train)
+
+# Merge data
+data = rbind(test_data, train_data)
+
+id_labels   = c("subject", "Activity_ID", "Activity_Label")
+data_labels = setdiff(colnames(data), id_labels)
+melt_data      = melt(data, id = id_labels, measure.vars = data_labels)
+
+# Apply mean function to dataset using dcast function
+tidy_data   = dcast(melt_data, subject + Activity_Label ~ variable, mean)
+
+```
+
+```{r}
+str(tidy_data)
+```
+
+## Attribute Information:
+
+For each record in the dataset it is provided: 
+* Triaxial acceleration from the accelerometer (total acceleration) and the estimated body acceleration. 
+*Triaxial Angular velocity from the gyroscope. 
+* A 561-feature vector with time and frequency domain variables. 
+* Its activity label. 
+* An identifier of the subject who carried out the experiment.
+
+
+## head of the dataset
+
+```{r}
+head(tidy_data, n=2L)
+```
+
+
+## Summary of variables
+
+```{r}
+summary(tidy_data)
+```
